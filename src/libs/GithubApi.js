@@ -113,6 +113,7 @@ module.exports = class GithubApi {
     importAndReplaceFilesIfNeeded(text)
     {
         // Ref:
+        // https://developer.github.com/v3/repos/contents
         // https://gist.github.com/maxisam/5c6ec10cc4146adce05d62f553c5062f
         
         const gitlabUrlFormat = `${this.gitlabProject.web_url}[:file:]`;

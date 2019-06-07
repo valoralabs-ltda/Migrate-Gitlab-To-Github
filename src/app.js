@@ -16,20 +16,26 @@ module.exports = async function main(ENV_CONFIG)
 
         try {
 
-            // Get data from Gitlab
+            /**
+             * Get data from Gitlab
+             */
             
             const project = await gitlabApi.getProjectData(REPO.gitlab.project_name, REPO.gitlab.group_id);
             const members = await gitlabApi.getMembers(project.id);
             const issues = await gitlabApi.getIssues(project.id);
             const milestones = await gitlabApi.getMilestones(project.id);
+    
+            /**
+             * Process and send data to Github
+             */
 
             githubApi.setGitlabProject(project);
             githubApi.setRepository(REPO.github.owner, REPO.github.repo_name);
             githubApi.setUsersNamesakes(REPO.namesake_users);
     
-            // Process and send data to Github
-    
             const githubMilestonesList = {};
+
+            // Se agregan los "collaborators" al repositorio de Github
 
             for (const key in members) {
                 if (!members.hasOwnProperty(key)) return;
@@ -77,6 +83,8 @@ module.exports = async function main(ENV_CONFIG)
                     });
                 }
             }
+
+            // Se migran los "milestones" al repositorio de Github
     
             for (const key in milestones) {
                 if (!milestones.hasOwnProperty(key)) return;
@@ -93,6 +101,8 @@ module.exports = async function main(ENV_CONFIG)
     
                 githubMilestonesList[milestone.id] = createdMilestone.data;
             }
+
+            // Se migran los "issues", "labels", "comments" al repositorio de Github
     
             for (const key in issues) {
                 if (!issues.hasOwnProperty(key)) return;

@@ -97,9 +97,9 @@ module.exports = class GithubApi {
         const allowedLabels = {
             "Development": "enhancement",
             "Bug": "bug",
-            "QA": "QA",
-            "Passed": "Passed",
-            "Rework": "invalid",
+            //"QA": "QA",
+            //"Passed": "Passed",
+            //"Rework": "invalid",
             "Documentation": "documentation"
         };
 

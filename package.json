@@ -1,0 +1,17 @@
+{
+  "name": "migrate-gitlab-to-github",
+  "version": "1.0.0",
+  "description": "Script para migrar desde un repositorio Gitlab a Github",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start-migration": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.19.0",
+    "moment": "^2.24.0",
+    "string-replace-async": "^1.2.1"
+  }
+}

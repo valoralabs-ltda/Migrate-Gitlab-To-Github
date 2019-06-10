@@ -14,18 +14,13 @@ module.exports = class GitlabApi {
         });
     }
 
-    async getProjectData(projectName, groupId = null)
+    async getProjectData(owner, projectName)
     {
-        let projects;
-        if (groupId) {
-            projects = await this.api.get(`/groups/${groupId}/projects?search=${projectName}`);
-        } else {
-            projects = await this.api.get(`projects?search=${projectName}`);
-        }
-        if (ArrayUtils.isEmpty(projects.data)) {
+        const project = await this.api.get(`projects/${owner}%2F${projectName}`);
+        if (!project.data) {
             throw Error('Error al devolver la información del proyecto');
         }
-        return projects.data[0];
+        return project.data;
     }
 
     async getMembers(projectId)

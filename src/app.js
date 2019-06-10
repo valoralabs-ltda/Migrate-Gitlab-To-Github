@@ -20,7 +20,7 @@ module.exports = async function main(ENV_CONFIG)
              * Get data from Gitlab
              */
             
-            const project = await gitlabApi.getProjectData(REPO.gitlab.project_name, REPO.gitlab.group_id);
+            const project = await gitlabApi.getProjectData(REPO.gitlab.owner, REPO.gitlab.project_name);
             const members = await gitlabApi.getMembers(project.id);
             const issues = await gitlabApi.getIssues(project.id);
             const milestones = await gitlabApi.getMilestones(project.id);
@@ -28,6 +28,8 @@ module.exports = async function main(ENV_CONFIG)
             /**
              * Process and send data to Github
              */
+
+            console.log(`Procesando repositorio "${project.path_with_namespace}" (${project.description})`);
 
             githubApi.setGitlabProject(project);
             githubApi.setRepository(REPO.github.owner, REPO.github.repo_name);

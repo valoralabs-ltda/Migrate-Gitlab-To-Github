@@ -9,10 +9,15 @@ module.exports = async function main(ENV_CONFIG)
     const gitlabApi = new GitlabApi(ENV_CONFIG);
     const githubApi = new GithubApi(ENV_CONFIG);
 
+    repos_loop:
     for (const key in ENV_CONFIG.MIGRATE_REPOS) {
         if (!ENV_CONFIG.MIGRATE_REPOS.hasOwnProperty(key)) return;
 
         const REPO = ENV_CONFIG.MIGRATE_REPOS[key];
+        let project = null;
+        let members = [];
+        let issues = [];
+        let milestones = [];
 
         try {
 
@@ -20,31 +25,50 @@ module.exports = async function main(ENV_CONFIG)
              * Get data from Gitlab
              */
             
-            const project = await gitlabApi.getProjectData(REPO.gitlab.owner, REPO.gitlab.project_name);
-            const members = await gitlabApi.getMembers(project.id);
-            const issues = await gitlabApi.getIssues(project.id);
-            const milestones = await gitlabApi.getMilestones(project.id);
-    
-            /**
-             * Process and send data to Github
-             */
+            project = await gitlabApi.getProjectData(REPO.gitlab.owner, REPO.gitlab.project_name);
+            members = await gitlabApi.getMembers(project.id);
+            issues = await gitlabApi.getIssues(project.id);
+            milestones = await gitlabApi.getMilestones(project.id);
 
-            console.log(`Procesando repositorio "${project.path_with_namespace}" (${project.description})`);
+        } catch (error) {
 
-            githubApi.setGitlabProject(project);
-            githubApi.setRepository(REPO.github.owner, REPO.github.repo_name);
-            githubApi.setUsersNamesakes(REPO.namesake_users);
-    
-            const githubMilestonesList = {};
+            console.log(`Repository migration "${REPO.gitlab.project_name}" to Github error!!!`);
 
-            // Se agregan los "collaborators" al repositorio de Github
+            if (error.response && ('data' in error.response)) {
+                console.log(`Error: ${error.response.data.message}`);
+            } else {
+                console.log(error);
+            }
 
-            for (const key in members) {
-                if (!members.hasOwnProperty(key)) return;
+            break repos_loop;
+
+        }
     
-                const member = members[key];
-                //console.log(member);
-    
+        /**
+         * Process and send data to Github
+         */
+
+        console.log(`Processing repository "${project.path_with_namespace}" (${project.description})\n`);
+
+        githubApi.setGitlabProject(project);
+        githubApi.setRepository(REPO.github.owner, REPO.github.repo_name);
+        githubApi.setUsersNamesakes(REPO.namesake_users);
+
+        const githubMilestonesList = {};
+
+        // Se agregan los "collaborators" al repositorio de Github
+
+        for (const key in members) {
+            if (!members.hasOwnProperty(key)) return;
+
+            const index = parseInt(key) + 1;
+            const member = members[key];
+            //console.log(member);
+
+            try {
+
+                console.log(`Processing collaborator "${member.username}" (${index}/${members.length})`);
+
                 /**
                  * Valid access levels (Gitlab)
                  * ---
@@ -83,17 +107,34 @@ module.exports = async function main(ENV_CONFIG)
                     await githubApi.addCollaborator(memberUserName, {
                         "permission": memberPermissionLevel
                     });
+                } else {
+                    console.log('Error: No match was found\n');
                 }
-            }
 
-            // Se migran los "milestones" al repositorio de Github
-    
-            for (const key in milestones) {
-                if (!milestones.hasOwnProperty(key)) return;
-    
-                const milestone = milestones[key];
-                //console.log(milestone);
-    
+            } catch (error) {
+
+                if (error.response && ('data' in error.response)) {
+                    console.log(`Error: ${error.response.data.message}\n`);
+                } else {
+                    console.log(`${error}\n`);
+                }
+
+            }
+        }
+
+        // Se migran los "milestones" al repositorio de Github
+
+        for (const key in milestones) {
+            if (!milestones.hasOwnProperty(key)) return;
+
+            const index = parseInt(key) + 1;
+            const milestone = milestones[key];
+            //console.log(milestone);
+
+            try {
+
+                console.log(`Processing milestone "${milestone.title}" (${index}/${milestones.length})`);
+
                 const createdMilestone = await githubApi.createMilestone({
                     "title": milestone.title,
                     "state": milestone.state === 'active' ? 'open' : milestone.state,
@@ -102,20 +143,39 @@ module.exports = async function main(ENV_CONFIG)
                 });
     
                 githubMilestonesList[milestone.id] = createdMilestone.data;
+
+            } catch (error) {
+
+                if (error.response && ('data' in error.response)) {
+                    console.log(`Error: ${error.response.data.message}`);
+                }
+
+                console.log(error);
+                break repos_loop;
+
             }
+        }
 
-            // Se migran los "issues", "labels", "comments" al repositorio de Github
-    
-            for (const key in issues) {
-                if (!issues.hasOwnProperty(key)) return;
-    
-                const issue = issues[key];
-                //console.log(issue);
+        // Se migran los "issues", "labels", "comments" al repositorio de Github
 
-                const comments = await gitlabApi.getIssueComments(project.id, issue.iid);
+        for (const key in issues) {
+            if (!issues.hasOwnProperty(key)) return;
+
+            const index = parseInt(key) + 1;
+            const issue = issues[key];
+            //console.log(issue);
+
+            let createdIssue = null;
+            let comments = [];
+
+            try {
+
+                comments = await gitlabApi.getIssueComments(project.id, issue.iid);
                 //console.log(comments);
-    
-                const createdIssue = await githubApi.createIssue({
+
+                console.log(`Processing issue "${issue.title}" (${index}/${issues.length}) and ${comments.length} comments`);
+
+                createdIssue = await githubApi.createIssue({
                     "title": issue.title,
                     "body": githubApi.parseText(issue.description, issue.author.username),
                     //"assignee": issue.assignee && githubApi.getNamesakeUser(issue.assignee.username),
@@ -131,7 +191,7 @@ module.exports = async function main(ENV_CONFIG)
     
                         let comment = comments[key];
                         //console.log(comment);
-
+    
                         //const commentUserName = githubApi.getNamesakeUser(comment.author.username);
                         const createdComment = await githubApi.createComment(createdIssue.data.number, {
                             "body": githubApi.parseText(comment.body, comment.author.username)
@@ -145,19 +205,20 @@ module.exports = async function main(ENV_CONFIG)
                     });
                 }
                 
+            } catch (error) {
+
+                if (error.response && ('data' in error.response)) {
+                    console.log(`Error: ${error.response.data.message}\n`);
+                }
+
+                console.log(error);
+                break repos_loop;
+                
             }
-
-            console.log(`Migration "${REPO.gitlab.project_name}" to Github successful!!!`)
-    
-        } catch (error) {
-
-            console.log(`Migration "${REPO.gitlab.project_name}" to Github error!!!`)
-            console.log(error)
-
-            if (error.response && 'data' in error.response) {
-                console.log(error.response.data);
-            }
-
+            
         }
+
+        console.log(`Migration "${REPO.gitlab.project_name}" to Github successful!!!`)
+        
     }
 }

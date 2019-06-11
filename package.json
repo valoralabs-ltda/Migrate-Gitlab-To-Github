@@ -1,6 +1,6 @@
 {
   "name": "migrate-gitlab-to-github",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Script para migrar desde un repositorio Gitlab a Github",
   "main": "index.js",
   "scripts": {

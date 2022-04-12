@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.21.2",
-    "moment": "^2.24.0",
+    "moment": "^2.29.2",
     "string-replace-async": "^1.2.1"
   }
 }
